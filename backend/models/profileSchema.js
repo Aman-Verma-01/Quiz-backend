@@ -1,22 +1,36 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
+
 const Schema = mongoose.Schema;
 
+
+
+// Define Profile schema with references to other schemas
 const profileSchema = new Schema({
     dob: {
         type: Date,
-        required: true
     },
     gender: {
         type: String,
         enum: ['Male', 'Female', 'Other'],
-        required: true
+        
     },
     contactNumber: {
         type: String,
-        required: true
+    },
+    student: {
+        type: Schema.Types.ObjectId,
+        ref: 'student'
+    },
+    admin: {
+        type: Schema.Types.ObjectId,
+        ref: 'admin'
+    },
+    superAdmin: {
+        type: Schema.Types.ObjectId,
+        ref: 'superAdmin'
     }
 });
 
-const profile = mongoose.model('profile', profileSchema);
-
-module.exports = profile;
+// Create Profile model
+const Profile = mongoose.model('Profile', profileSchema);
+export default  Profile ;

@@ -24,13 +24,6 @@ const studentSchema= new mongoose.Schema({
         required:[true , "please provide your  password !!! "]
        
     },
-    otp:{
-        type:Number,
-    },
-    isverified:{
-        type:Boolean,
-        default:false
-    },
     profileID:{
         type:mongoose.Schema.ObjectId,
         ref:'profile'

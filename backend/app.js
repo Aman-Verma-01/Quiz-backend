@@ -5,8 +5,10 @@ import superAdmin from './routes/SuperAdmin.routes.js';
 import student from './routes/Student.routes.js';
 import admin from './routes/Admin.routes.js';
 import quiz from "./routes/quiz.js"
+import Profile from "./routes/Profile.routes.js"
 import conn from "./database/conn.js";
 import { errorMiddleware } from './middlewares/error.middleware.js';
+import authuser from './middlewares/auth.middleware.js';
 
 dotenv.config();
 
@@ -21,6 +23,7 @@ app.use(cookieParser());
 app.use("/api/student/v1", student); 
 app.use("/api/admin/v1", admin); 
 app.use("/api/superAdmin/v1", superAdmin); 
+app.use("/api/profile/v1",authuser, Profile); 
 app.use("/api/quiz", quiz); 
 app.use(errorMiddleware);
 

@@ -2,7 +2,7 @@ class ResponseHandler extends Error {
   constructor(message, statusCode, success, user) {
     super(message);
     this.statusCode = statusCode;
-    this.success = success || false; // Default to false if success is not provided
+    this.success = success || "false"; // Default to false if success is not provided
     this.user = user || null; // Default to null if user is not provided
   }
 }

@@ -2,71 +2,71 @@ import Admin from "../models/SuperAdminSchema.js";
 import ResponseHandler from "../middlewares/error.middleware.js";
 import student, { comparepassword } from  '../models/StudentSchema.js'
 import { sendtoken } from "../utils/basicfxn.js";
-import { sendOTPEmail } from '../utils/basicfxn.js'; 
+import Profile from "../models/profileSchema.js";
+import OTP from "../models/Otp.js";
 import admin from "../models/AdminSchema.js";
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit OTP
 }
- export const Register = async (req, res, next) => {
-    const { name, email, password } = req.body;
+// Register a new student
+export const Register = async (req, res, next) => {
+    const { name, email, password, confirmPassword,otp } = req.body;
     try {
-        // Check if   student already exists
-        const existinguser = await   student.findOne({ email });
-        if (existinguser) {
-            return next(new ResponseHandler("  student already exists!", 400,false));
-        }
-        const otp = generateOTP(); // Implement generateOTP function to generate OTP
-
+        // Check if  superAdmin already exists
         
-       
-        // Create a new   student (without saving to database yet)
-        const newUser = new   student({
+        if (password !== confirmPassword) {
+			return res.status(400).json({
+				success: false,
+				message:
+					"Password and Confirm Password do not match. Please try again.",
+			});
+		}
+        const existinguser = await  student.findOne({ email });
+        if (existinguser) {
+            return next(new ResponseHandler(" student already exists!", 400,false));
+        }
+
+        const response= await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+        if (response.length === 0) {
+			// OTP not found for the email
+			return res.status(400).json({
+				success: false,
+				message: "The OTP is not valid",
+			});
+		} else if (otp !== response[0].otp) {
+			// Invalid OTP
+			return res.status(400).json({
+				success: false,
+				message: "The OTP is not valid",
+			});
+		} 
+        // Create a new  superAdmin (without saving to database yet)
+        const newUser = new  student({
             name,
             email,
             password,
-            otp,
-            isverified:false// Mark   student as not verified initially
         });
-       const response= await  newUser.save(); 
-      if(response){
-        await sendOTPEmail(email, otp,"OTP FOR VERIFICATION");
-        sendtoken( newUser,200,res," superAdmin LOgged Inn Successfully !!!!!");
-        return next(new ResponseHandler("OTP sent for verification", 200,true));
-      }
-    else{
+       const result= await newUser.save(); 
+      if(!result)
         return next(new ResponseHandler("there is some error in the input", 400,false));
-    }
-       
+      
+        const profileDetails = await Profile.create({
+			gender: null,
+			dob: null,
+            contactNumber: null,
+            student:result._id
+		});
+        newUser.profileID=profileDetails._id; 
+        await newUser.save(); 
+        sendtoken( newUser,200,res," student registered Successfully !!!!!");
+        return next(new ResponseHandler("student registered Successfully", 209,true));
 
     } catch (error) {
         next(error);
     }
 };
 
-// Function to verify OTP and save   student if verified successfully
-export const VerifyOTPAndSaveUser = async (req, res, next) => {
-    const { otp } = req.body;
-    const {  email } = req.body;
-     
-    try {
-        // Verify OTP
-        const response= await   student.findOne({email}); 
-        if (otp !=response.otp ) {
-            return next(new ResponseHandler("Invalid OTP", 400,false));
-        }
 
-      else{
-        response.isverified=true; 
-       const result= await response.save(); 
-        // Respond with success message and status
-        return next(new ResponseHandler(" student registered and verified successfully", 200,true,result));
-      }      
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Example OTP generation function (synchronous for simplicity)
 
 
 
@@ -82,8 +82,6 @@ export const login = async (req, res,next) => {
         
     if(!  User )
         return next(new ResponseHandler("  student Does nort Existt ", 400,false));
-    if(User.isverified==false)
-    return next(new ResponseHandler("Please verify your Email", 400,false));
     const decode=await comparepassword( User,password);  
     if (!decode)
         return next(new ResponseHandler("Incorrect Password !!! ", 400));
@@ -110,26 +108,21 @@ export const logout=async(req,res,next)=>{
     }
   
 }  
-      export const getUser=async(req,res,next)=>{
-        const  fetchUser=req.user; 
-        res.status(200).send(User); 
-      }
       export const forgotpassword=async(req,res,next)=>{
         const {  email } = req.body;
                 try {
                     const response=await   student.findOne({email}); 
                     if(!response)
                     return next(new ResponseHandler("  student Does nort Existt ", 400));
-                      const otp=generateOTP(); 
-                      response.otp=otp; 
-                     const result= await response.save(); 
-                     if(result)
-                      sendOTPEmail(email,otp,"OTP FOR VERIFICATION"); 
+                    var otp = Math.floor(100000 + Math.random() * 900000); 
+		            const otpPayload = { email, otp };
+		            const otpBody = await OTP.create(otpPayload);
+                     if(otpBody)
                       return next(new ResponseHandler(" OTP sent to your email for password reset.", 202,true));
 
                     } catch (error) {
                         console.error("Error in forgot password:", error);
-                        res.status(500).json({ message: "Failed to process forgot password request." });
+                        return next(new ResponseHandler("Failed to process forgot password request.", 500));
                     }
   
          
@@ -146,11 +139,19 @@ export const logout=async(req,res,next)=>{
                 return next(new ResponseHandler("  student Does nort Existt ", 400,false));
             }
     
-            // Verify OTP
-            if (otp !==User.otp) {
-                return next(new ResponseHandler("Invalid Otp ", 400,false));
-            }
-    
+            const response= await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+            if (response.length === 0) {
+                // OTP not found for the email
+                return res.status(400).json({
+                    success: false,
+                    message: "The OTP is not valid",
+                });
+            } else if (otp !== response[0].otp) {
+                // Invalid OTP
+                return res.status(400).json({
+                    success: false,
+                    message: "The OTP is not valid",
+                });} 
             // Update password
            User.password = password; // Assuming newPassword is already hashed
             await User.save();
@@ -185,4 +186,3 @@ export const logout=async(req,res,next)=>{
         }
         }
       
-

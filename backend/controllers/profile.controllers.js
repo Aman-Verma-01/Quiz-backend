@@ -1,81 +1,85 @@
-import profile from "../models/profileSchema.js";
-import superAdmin from "../models/SuperAdminSchema.js";
-import admin from "../models/AdminSchema.js";
+import ResponseHandler from "../middlewares/error.middleware.js";
 import student from "../models/StudentSchema.js";
-// Arrow function to add a new  profile profile
-const addProfile = async (req, res) => {
-    const {email}=req.user;
-    const { dob, gender, contactNumber } = req.body;
-    try {
-        const  profile = new  profile({
-            dob: dob,
-            gender: gender,
-            contactNumber: contactNumber
-        });
-        const newprofile = await  profile.save();
-       const User=( await superAdmin.findOne({email}))||(await admin.findOne({email}))||(await student.findOne({email}));
-       User.profileID=newprofile._id; 
-       await User.save()
-       console.log('New  profile profile added:', new profile);
-        res.status(201).json(new profile);
-    } catch (err) {
-        console.error('Error adding  profile profile:', err.message);
-        res.status(500).json({ error: 'Failed to add  profile profile' });
-    }
+import Profile from "../models/profileSchema.js"
+// Function to get all profiles
+export const getMyProfile = async (req, res, next) => {
+    const {profileID}=req.user;
+  try {
+    const profile = await Profile.findById({_id:profileID});
+    if (!profile) {
+        return res.status(404).json({ message: 'Profile not found' });
+      }
+    res.json(profile);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// Arrow function to update an existing  profile profile by ID
-const update profileProfile = async (req, res) => {
-    const { id } = req.params;
-    const newFields = req.body;
-    try {
-        const updated profile = await  profile.findByIdAndUpdate(id, newFields, { new: true });
-        if (!updated profile) {
-            throw new Error(' profile profile not found');
-        }
-        console.log(' profile profile updated:', updated profile);
-        res.json(updated profile);
-    } catch (err) {
-        console.error('Error updating  profile profile:', err.message);
-        res.status(404).json({ error: err.message });
-    }
+
+
+// Function to create a new profile
+export const createProfile = async (req, res, next) => {
+  const { dob, contactNumber, gender } = req.body;
+  const User=req.user; 
+ 
+  try {
+    const profile = new Profile({ dob, contactNumber, gender });
+    const StudentUser=await student.findById(User._id); 
+  
+    if(!StudentUser)
+    return next(new ResponseHandler("user does not exist",404,false))
+    profile.student=User._id;
+    const newProfile = await profile.save();
+    StudentUser.profileID=newProfile._id; ;
+    await StudentUser.save(); 
+    res.status(201).json(newProfile);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// Arrow function to delete a  profile profile by ID
-const delete profileProfile = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const deleted profile = await  profile.findByIdAndDelete(id);
-        if (!deleted profile) {
-            throw new Error(' profile profile not found');
-        }
-        console.log(' profile profile deleted:', deleted profile);
-        res.json(deleted profile);
-    } catch (err) {
-        console.error('Error deleting  profile profile:', err.message);
-        res.status(404).json({ error: err.message });
+// Function to update a profile by ID
+export const updateProfileById = async (req, res, next) => {
+    const {profileID}=req.user;
+  const { dob, contactNumber, gender } = req.body;
+
+  try {
+    const profile = await Profile.findById(profileID);
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
     }
+
+    if (dob !== undefined) {
+      profile.dob = dob;
+    }
+    if (contactNumber !== undefined) {
+      profile.contactNumber = contactNumber;
+    }
+    if (gender !== undefined) {
+      profile.gender = gender;
+    }
+
+    const updatedProfile = await profile.save();
+    res.json(updatedProfile);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// Arrow function to get a  profile profile by ID
-const get profileProfile = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const  profile = await  profile.findById(id);
-        if (! profile) {
-            throw new Error(' profile profile not found');
-        }
-        console.log(' profile profile found:',  profile);
-        res.json( profile);
-    } catch (err) {
-        console.error('Error getting  profile profile:', err.message);
-        res.status(404).json({ error: err.message });
+// Function to delete a profile by ID
+export const deleteProfileById = async (req, res, next) => {
+    const {profileID}=req.user;
+  try {
+    
+    const profile = await Profile.findById(profileID);
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' ,"id":profile});
     }
+
+    //await profiled.delete();
+    res.json({ message: 'Profile deleted' });
+  } catch (err) {
+    next(err);
+  }
 };
 
-module.exports = {
-    add profileProfile,
-    update profileProfile,
-    delete profileProfile,
-    get profileProfile
-};

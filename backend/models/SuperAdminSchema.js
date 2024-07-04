@@ -17,18 +17,16 @@ const superAdminSchema= new mongoose.Schema({
             message: 'Please provide a valid email address!'
         }
     },
+    profileID:{
+        type:mongoose.Schema.ObjectId,
+        ref:'profile'
+    }
+    ,
 
     password:{
         type:String,
         required:[true , "please provide your  password !!! "]
        
-    },
-    otp:{
-        type:Number,
-    },
-    isverified:{
-        type:Boolean,
-        default:false
     },
     adminCreated:[{
         type:mongoose.Schema.ObjectId,

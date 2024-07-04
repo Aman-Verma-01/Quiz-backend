@@ -3,6 +3,7 @@ import ResponseHandler from "../middlewares/error.middleware.js";
 import student, { comparepassword } from  '../models/StudentSchema.js'
 import { sendtoken } from "../utils/basicfxn.js";
 import { sendOTPEmail } from '../utils/basicfxn.js'; 
+import OTP from "../models/Otp.js";
 import admin from "../models/AdminSchema.js";
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit OTP
@@ -52,26 +53,26 @@ export const logout=async(req,res,next)=>{
         const  fetchUser=req.user; 
         res.status(200).send(User); 
       }
-      export const forgotpassword=async(req,res,next)=>{
+      export const forgotpassword=async(req,res,next)=>{ 
         const {  email } = req.body;
                 try {
                     const response=await   admin.findOne({email}); 
                     if(!response)
                     return next(new ResponseHandler("  Admin Does nort Existt ", 400));
-                      const otp=generateOTP(); 
-                      response.otp=otp; 
-                     const result= await response.save(); 
-                     if(result)
-                      sendOTPEmail(email,otp,"OTP FOR VERIFICATION"); 
+                    var otp = Math.floor(100000 + Math.random() * 900000); 
+		            const otpPayload = { email, otp };
+		            const otpBody = await OTP.create(otpPayload);
+                     if(otpBody)
                       return next(new ResponseHandler(" OTP sent to your email for password reset.", 202,true));
 
                     } catch (error) {
                         console.error("Error in forgot password:", error);
-                        res.status(500).json({ message: "Failed to process forgot password request." });
+                        return next(new ResponseHandler("Failed to process forgot password request.", 500));
                     }
   
          
       }
+
 
     export  const verifyOtpandResetPassword= async (req, res, next) => {
         const { email, otp, password } = req.body;
@@ -84,11 +85,19 @@ export const logout=async(req,res,next)=>{
                 return next(new ResponseHandler("  Admin Does nort Existt ", 400,false));
             }
     
-            // Verify OTP
-            if (otp !==User.otp) {
-                return next(new ResponseHandler("Invalid Otp ", 400,false));
-            }
-    
+          const response= await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+            if (response.length === 0) {
+                // OTP not found for the email
+                return res.status(400).json({
+                    success: false,
+                    message: "The OTP is not valid",
+                });
+            } else if (otp !== response[0].otp) {
+                // Invalid OTP
+                return res.status(400).json({
+                    success: false,
+                    message: "The OTP is not valid",
+                });} 
             // Update password
            User.password = password; // Assuming newPassword is already hashed
             await User.save();

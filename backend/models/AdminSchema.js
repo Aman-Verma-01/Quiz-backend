@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
 import bcrypt from "bcrypt"; 
-import jwt from "jsonwebtoken";
 const adminSchema= new mongoose.Schema({
     name:{
         type:String,
@@ -17,19 +16,17 @@ const adminSchema= new mongoose.Schema({
             validator: validator.isEmail,
             message: 'Please provide a valid email address!'
         }
+    }
+    ,
+    profileID:{
+        type:mongoose.Schema.ObjectId,
+        ref:'profile'
     },
 
     password:{
         type:String,
         required:[true , "please provide your  password !!! "]
        
-    },
-    otp:{
-        type:Number,
-    },
-    isverified:{
-        type:Boolean,
-        default:true
     },
     quizzes:[{
         type:mongoose.Schema.ObjectId,
